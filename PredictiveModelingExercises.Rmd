@@ -1,0 +1,651 @@
+---
+title: "Predictive Modeling Exercises"
+author: "Samuel Wu"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Exercise 1
+
+(Maybe we can look at the data removed to see why leasing was so low.)
+We aim to recreate the process done by the "guru" to confirm the validity of their analysis.
+
+We first read in our data.
+
+```{r, echo=FALSE}
+library(tidyverse)
+urlfile= "https://raw.githubusercontent.com/jgscott/STA380/master/data/greenbuildings.csv"
+greenbuildings = read_csv(url(urlfile))
+```
+
+Now we clean the dataset to remove those with leasing rates lower than 10%. Afterward, we separate the data into green and non-green buildings.
+
+```{r, echo=FALSE}
+cleaned_gb <- greenbuildings[ which(greenbuildings$leasing_rate >= 10),]
+green <- cleaned_gb[ which(cleaned_gb$green_rating == 1),]
+not_green <- cleaned_gb[ which(cleaned_gb$green_rating == 0),]
+```
+
+We can visualize how many of each building type there are with a bar plot.
+
+```{r, echo=FALSE}
+heights = c(dim(green)[1], dim(not_green)[1])
+barplot(heights, 
+        main = "Green Building Counts",
+        xlab = "Type of Building",
+        ylab = "Count",
+        names.arg = c("Green", "Not Green"),)
+```
+
+Now we'll check the median rent values of the two building types.
+
+```{r, echo=FALSE}
+median(green$Rent)
+median(not_green$Rent)
+```
+
+Here, we see the numbers align with what was reported before, with the exceptions of the green building's median rent being $25.03. However, this number is very close to what was reported, so the calculations that were initially reported are still a good representation of our future revenue.
+
+We would also like to see if there are confounding variables in the relationship between Rent and green_status. To get a sense of what's going on, we first plot these two.
+
+```{r, echo=FALSE}
+plot(cleaned_gb$Rent, cleaned_gb$green_rating)
+```
+We notice that most of the green buildings have lower rents. So this could indicate a relationship to factors like building size and age.
+
+```{r}
+plot(cleaned_gb$age, cleaned_gb$Rent)
+```
+```{r}
+plot(cleaned_gb$size, cleaned_gb$Rent)
+```
+```{r}
+plot(cleaned_gb$age, cleaned_gb$size)
+```
+
+Summarizing the results above, we see that smaller apartments tend to lead toward cheaper rent, which makes sense since you'd pay less for less space. There doesn't seem to be a trend between rent and age. The older apartments are slightly smaller than their younger counterparts. The graph between age and size is interesting though because it seems like younger apartments have generally bigger sizes. This potentially shows a relationship between confounding variables. If we wanted to reduce the dimensionality of our problem, we could combine data like age and size into 1 variable or only use 1 in our analysis since the information from one column tells us something about the other. In turn, this could allow us to adjust for these confounders in our problem.
+
+# Exercise 2
+
+We aim to look at the relationships connected to cancelled flights, the reasons for them, and the days of the week they occur. First, we read in the data necessary.
+
+```{r, echo=FALSE}
+library(tidyverse)
+urlfile= "https://raw.githubusercontent.com/jgscott/STA380/master/data/ABIA.csv"
+abia = read_csv(url(urlfile))
+cancelled <- abia[ which(abia$Cancelled == 1),]
+```
+
+Out of the 99260 rows, we only have data on 1420 cancelled flights, but this can give us some insights still. We first make a pie chart to see what percentage of these cancellations are due to the carrier, weather, NAS, or security.
+
+```{r, echo=FALSE}
+carrier <- cancelled[which(cancelled$CancellationCode == "A"),]
+weather <- cancelled[which(cancelled$CancellationCode == "B"),]
+NAS <- cancelled[which(cancelled$CancellationCode == "C"),]
+security <- cancelled[which(cancelled$CancellationCode == "D"),]
+
+sizes <- c(dim(carrier)[1], dim(weather)[1], dim(NAS)[1], dim(security)[1])
+
+labels <- c("carrier", "weather", "NAS", "security")
+
+piepercent <- round(100*sizes/sum(sizes), 1)
+
+pie(sizes, labels = piepercent, main = "Percentages for Flight Cancellations", col = rainbow(length(sizes)))
+
+legend("bottomleft", c("Carrier"," Weather","NAS","Security"), cex = 0.8,
+   fill = rainbow(length(sizes)))
+```
+From our first pie chart, we see that 50.6% the cancellations at ABIA are due to carrier issues. This could be overbooked flights or other internal issues. This is followed by a 42.6% cancellation rate due to weather. NAS is a small issues compared to the others, and there were actually no security cancellations. Maybe this suggests Austin's airport is safe for fliers.
+
+Our next goal is to see if there's a relation between the day of the week and these cancellations. We use a bar graph to illustrate. 
+
+```{r,echo=FALSE}
+
+cancelled_day_counts <- c(dim(cancelled[which(cancelled$DayOfWeek == 1),])[1],
+  dim(cancelled[which(cancelled$DayOfWeek == 2),])[1],
+  dim(cancelled[which(cancelled$DayOfWeek == 3),])[1],
+  dim(cancelled[which(cancelled$DayOfWeek == 4),])[1],
+  dim(cancelled[which(cancelled$DayOfWeek == 5),])[1],
+  dim(cancelled[which(cancelled$DayOfWeek == 6),])[1],
+  dim(cancelled[which(cancelled$DayOfWeek == 7),])[1])
+
+barplot(cancelled_day_counts,
+main = "Cancellations by Day of the Week",
+xlab = "Day of the Week",
+ylab = "Number of Cancellations",
+names.arg = c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"),
+col = "darkred",
+horiz = FALSE)
+```
+
+Our results show that Tuesday seems to have the most cancellations compared to the other days. It hsa 289 cancellations. The weekends (Saturday and Sunday) seem to have much lower values compared to the rest (151 and 156 respectively).
+
+Now we aim to see if there's a relation between the day of the week and the cancellation type. (I think you just loop using the code aboce, just add a parameter to check for abcd, and let i be day of the week)
+
+```{r, echo=FALSE}
+for (day in c(1,2,3,4,5,6,7)) {
+  count_carrier <- carrier[which(carrier$DayOfWeek == day),]
+  count_weather <- weather[which(weather$DayOfWeek == day),]
+  count_NAS <- NAS[which(NAS$DayOfWeek == day),]
+  
+  total_counts <- c(dim(count_carrier)[1], dim(count_weather)[1], dim(count_NAS)[1])
+  
+  barplot(total_counts,
+  main = paste("Cancellations on Day", day, sep = " "),
+  xlab = "Type of Cancellation",
+  ylab = "Number of Cancellations",
+  names.arg = c("Carrier", "Weather", "NAS"),
+  col = "darkred",
+  horiz = FALSE)
+}
+#"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", #"Sunday"
+```
+In these graphs, the days 1 through 7 correspond to Monday through Sunday in that order. Analyzing the results, we see that on most weekdays, cancellations are due to carrier issues. The only exception to this is on Tuesday where there are slightly more weather based cancellations. Saturdays seem to favor carrier cancellations while Sundays favor those of weather. 
+
+To conclude our results, it seems like Tuesdays are some of the worst days to travel from the Austin airport because of a mix of weather and carrier issues. If one wants to reduce the chances of a cancelled flight, choosing a clear day on the weekend seems to suggest the best travel conditions.
+
+# Exercise 3
+
+We first start off with a simple portfolio of  corporate bonds each invested in evenly from companies like iShares, Fidelity, and Vanguard. These seem like relatively safe bonds to invest into so we aim to see the risk behind this portfolio.
+
+```{r, echo=FALSE}
+library(mosaic)
+library(quantmod)
+library(foreach)
+# Choose our stocks
+mystocks = c("LQD", "FCOR", "VCIT")
+myprices = getSymbols(mystocks, from = "2007-01-01")
+
+
+# A chunk of code for adjusting all stocks
+# creates a new object adding 'a' to the end
+for(ticker in mystocks) {
+	expr = paste0(ticker, "a = adjustOHLC(", ticker, ")")
+	eval(parse(text=expr))
+}
+
+# Combine all the returns in a matrix
+all_returns = cbind(	ClCl(LQDa),
+								ClCl(FCORa),
+								ClCl(VCITa))
+
+head(all_returns)
+all_returns = as.matrix(na.omit(all_returns))
+
+# Compute the returns from the closing prices
+#pairs(all_returns)
+
+# Sample a random return from the empirical joint distribution
+# This simulates a random day
+return.today = resample(all_returns, 1, orig.ids=FALSE)
+
+# Now simulate many different possible futures
+# We use 4 weeks and have an initial value of 100000
+initial_wealth = 100000
+n_days = 20
+sim1 = foreach(i=1:5000, .combine='rbind') %do% {
+	total_wealth = initial_wealth
+	weights = c(0.33, 0.33, 0.33)
+	holdings = weights * total_wealth
+	n_days = 10
+	wealthtracker = rep(0, n_days)
+	for(today in 1:n_days) {
+		return.today = resample(all_returns, 1, orig.ids=FALSE)
+		holdings = holdings + holdings*return.today
+		total_wealth = sum(holdings)
+		wealthtracker[today] = total_wealth
+	}
+	wealthtracker
+}
+
+# each row is a simulated trajectory
+# each column is a data
+#head(sim1)
+#hist(sim1[,n_days], 25)
+
+# Profit/loss
+#mean(sim1[,n_days])
+#mean(sim1[,n_days] - initial_wealth)
+#hist(sim1[,n_days]- initial_wealth, breaks=30)
+
+# 5% value at risk:
+quantile(sim1[,n_days]- initial_wealth, prob=0.05)
+```
+Our first portfolio was the smallest, and its value at risk was a loss of $2660.78. So we ultimately lost money by investing in these funds. However, there was not much volatility in this portfolio, so we compare this to our second one which is larger, and much more diverse. We aim to see if we can earn a profit from this kind of investment.
+
+This second portfolio includes 7 funds, and are from varied sources like Japan Equities, All Cap Equities, Corporate Bonds, and more. These are also equally invested into.
+
+```{r, echo=FALSE}
+library(mosaic)
+library(quantmod)
+library(foreach)
+# Choose our stocks
+mystocks = c("LQD", "WMT", "JNJ", "SPY", "DXJ", "SDY", "XLK")
+myprices = getSymbols(mystocks, from = "2007-01-01")
+
+
+# A chunk of code for adjusting all stocks
+# creates a new object adding 'a' to the end
+for(ticker in mystocks) {
+	expr = paste0(ticker, "a = adjustOHLC(", ticker, ")")
+	eval(parse(text=expr))
+}
+
+# Combine all the returns in a matrix
+all_returns = cbind(	ClCl(LQDa),
+								ClCl(WMTa),
+								ClCl(JNJa),
+								ClCl(SPYa),
+								ClCl(DXJa),
+								ClCl(SDYa),
+								ClCl(XLKa))
+
+head(all_returns)
+all_returns = as.matrix(na.omit(all_returns))
+
+# Compute the returns from the closing prices
+#pairs(all_returns)
+
+# Sample a random return from the empirical joint distribution
+# This simulates a random day
+return.today = resample(all_returns, 1, orig.ids=FALSE)
+
+# Now simulate many different possible futures
+# We use 4 weeks and have an initial value of 100000
+initial_wealth = 100000
+n_days = 20
+sim1 = foreach(i=1:5000, .combine='rbind') %do% {
+	total_wealth = initial_wealth
+	weights = c(0.1427, 0.1427, 0.1427,
+	            0.1427, 0.1427, 0.1427, 0.1427)
+	holdings = weights * total_wealth
+	n_days = 10
+	wealthtracker = rep(0, n_days)
+	for(today in 1:n_days) {
+		return.today = resample(all_returns, 1, orig.ids=FALSE)
+		holdings = holdings + holdings*return.today
+		total_wealth = sum(holdings)
+		wealthtracker[today] = total_wealth
+	}
+	wealthtracker
+}
+
+# each row is a simulated trajectory
+# each column is a data
+#head(sim1)
+#hist(sim1[,n_days], 25)
+
+# Profit/loss
+#mean(sim1[,n_days])
+#mean(sim1[,n_days] - initial_wealth)
+#hist(sim1[,n_days]- initial_wealth, breaks=30)
+
+# 5% value at risk:
+quantile(sim1[,n_days]- initial_wealth, prob=0.05)
+```
+
+Interestingly, this portfolio also produced a value at risk in the negatives, that being $4835.53. While in general, it's good to diversify, in this case we predicted losses again. This could have been because the funds chosen simply did poorly since most of the choices were selected somewhat randomly. 
+
+In order to try to turn a profit, we use our third portfolio to aggressively hone in on funds that do well, instead of dividing our investment equally. We'll invest in the 4 technology equity ETFs that hold the most assets.
+
+```{r, echo=FALSE}
+library(mosaic)
+library(quantmod)
+library(foreach)
+# Choose our stocks
+mystocks = c("VGT", "XLK", "IYW", "IGV")
+myprices = getSymbols(mystocks, from = "2007-01-01")
+
+
+# A chunk of code for adjusting all stocks
+# creates a new object adding 'a' to the end
+for(ticker in mystocks) {
+	expr = paste0(ticker, "a = adjustOHLC(", ticker, ")")
+	eval(parse(text=expr))
+}
+
+# Combine all the returns in a matrix
+all_returns = cbind(	ClCl(VGTa),
+								ClCl(XLKa),
+								ClCl(IYWa),
+								ClCl(IGVa))
+
+head(all_returns)
+all_returns = as.matrix(na.omit(all_returns))
+
+# Compute the returns from the closing prices
+#pairs(all_returns)
+
+# Sample a random return from the empirical joint distribution
+# This simulates a random day
+return.today = resample(all_returns, 1, orig.ids=FALSE)
+
+# Now simulate many different possible futures
+# We use 4 weeks and have an initial value of 100000
+initial_wealth = 100000
+n_days = 20
+sim1 = foreach(i=1:5000, .combine='rbind') %do% {
+	total_wealth = initial_wealth
+	weights = c(0.50, 0.25, 0.125, 0.125)
+	holdings = weights * total_wealth
+	n_days = 10
+	wealthtracker = rep(0, n_days)
+	for(today in 1:n_days) {
+		return.today = resample(all_returns, 1, orig.ids=FALSE)
+		holdings = holdings + holdings*return.today
+		total_wealth = sum(holdings)
+		wealthtracker[today] = total_wealth
+	}
+	wealthtracker
+}
+
+# each row is a simulated trajectory
+# each column is a data
+#head(sim1)
+#hist(sim1[,n_days], 25)
+
+# Profit/loss
+#mean(sim1[,n_days])
+#mean(sim1[,n_days] - initial_wealth)
+#hist(sim1[,n_days]- initial_wealth, breaks=30)
+
+# 5% value at risk:
+quantile(sim1[,n_days]- initial_wealth, prob=0.05)
+```
+
+The funds "VGT", "XLK", "IYW", and "IGV" were invested into with 50%, 25%, 12.5%, and 12.5% of our 100,000 in that order. Sadly, we find that this portfolio did the worst out of the three with a value at risk of $6858.35 (loss). 
+
+Ultimately, our portfolios all produced a loss. However, there are some conclusions to be drawn. It appears that corporate bonds led to the least loss of investment. This is an interesting result because it was one of our smaller portfolios, and it generally seems that diversifying leads to betters results. We can see this in our second portfolio that still operated at a loss but not as much as our third one. The third one suggests that heavily investing in funds of larger companies (in terms of assets) can still do poorly. 
+
+# Exercise 4
+
+Let's load in the data first.
+
+```{r, echo=FALSE}
+library(tidyverse)
+urlfile= "https://raw.githubusercontent.com/jgscott/STA380/master/data/social_marketing.csv"
+social = read_csv(url(urlfile))
+```
+
+Now we run k-means++ to identify clusters within our data
+
+```{r, echo=FALSE}
+library(ggplot2)
+library(LICORS)  # for kmeans++
+library(foreach)
+library(mosaic)
+
+summary(social)
+
+# Center and scale the data
+X = social[,(2:37)]
+X = scale(X, center=TRUE, scale=TRUE)
+
+# Extract the centers and scales from the rescaled data (which are named attributes)
+mu = attr(X,"scaled:center")
+sigma = attr(X,"scaled:scale")
+
+# Run k-means with 6 clusters and 25 starts
+clust1 = kmeans(X, 6, nstart=25)
+
+# What are the clusters?
+#clust1$center  # not super helpful
+#clust1$center[1,]*sigma + mu
+#clust1$center[2,]*sigma + mu
+#clust1$center[4,]*sigma + mu
+
+# A few plots with cluster membership shown
+# qplot is in the ggplot2 library
+#qplot(current_events, chatter, data=social, color=factor(clust1$cluster))
+#qplot(Horsepower, CityMPG, data=social, color=factor(clust1$cluster))
+
+
+# Using kmeans++ initialization
+clust2 = kmeanspp(X, k=6, nstart=25)
+
+clust2$center[1,]*sigma + mu
+clust2$center[2,]*sigma + mu
+clust2$center[4,]*sigma + mu
+
+
+# Extra stuff, graph not readable
+
+# First form a pairwise distance matrix
+distance_between_data = dist(X)
+
+# Now run hierarchical clustering
+h1 = hclust(distance_between_data, method='complete')
+
+# Cut the tree into 10 clusters
+cluster1 = cutree(h1, k=10)
+summary(factor(cluster1))
+
+# Plot the dendrogram
+plot(h1, cex=0.3)
+```
+
+The K-means++ algorithm gives us some good insights of potential clusters for this data. In our first cluster, we see a high amount of interest in travel, photo sharing, politics, news, computers, and automotives. This market segment seems to be older people who are travellers that are very invested in current events and like to share their experiences online, potentially through social media.
+
+The second cluster we came across has a high interest in online gaming, college_uni, sports_playing, and photo_sharing. This suggests these are young adults who have an interest in video games and competition in general due to the interest in sports as well. This could represent a younger group compared to our initial cluster.
+
+The third cluster we investigated had a high interest in sports_fandom, food, family, religion, parenting, and school. This cluster suggests a group of parents who may potentially be looking into the futures of their children.
+
+While these results are interesting, we'd like to try a similar method with fewer features to see if anything changes.
+
+```{r}
+library(ggplot2)
+library(LICORS)  # for kmeans++
+library(foreach)
+library(mosaic)
+
+#summary(social)
+
+# Center and scale the data
+X = social[,(3:35)]
+X = scale(X, center=TRUE, scale=TRUE)
+
+# Extract the centers and scales from the rescaled data (which are named attributes)
+mu = attr(X,"scaled:center")
+sigma = attr(X,"scaled:scale")
+
+# Run k-means with 6 clusters and 25 starts
+clust1 = kmeans(X, 6, nstart=25)
+
+# What are the clusters?
+#clust1$center  # not super helpful
+#clust1$center[1,]*sigma + mu
+#clust1$center[2,]*sigma + mu
+#clust1$center[4,]*sigma + mu
+
+# A few plots with cluster membership shown
+# qplot is in the ggplot2 library
+#qplot(current_events, chatter, data=social, color=factor(clust1$cluster))
+#qplot(Horsepower, CityMPG, data=social, color=factor(clust1$cluster))
+
+
+# Using kmeans++ initialization
+clust2 = kmeanspp(X, k=6, nstart=25)
+
+clust2$center[1,]*sigma + mu
+clust2$center[2,]*sigma + mu
+clust2$center[4,]*sigma + mu
+```
+
+From our first cluster, we see photo_sharing is a big component again with similar results as before. However, shopping becomes a new topic that comes up. This does align with our previous segment that we predicted since they seem to have a lot of online activity and online shopping can contribute to that.
+
+The second cluster we look at again is involved with photo_sharing but this time, it's grouped with beauty, fashion, and cooking. This seems like it could be correlated with the previous group we just talked about.
+
+From the third cluster we look at, we get a similar result to the gaming group mentioned in the first attempt we made. From these results, it seems like NutrientH20's primary demographic is adult parents who have an interest in travelling, health, and their family. There seems to be a potentially younger group of college students who also has an interest in them.
+
+# Exercise 5
+
+We first find a way to read in all the training data.
+
+```{r}
+library(tm)
+readerPlain = function(fname){
+  readPlain(elem=list(content=readLines(fname)), id=fname, language='en') 
+}
+#get all authors for the documents
+authors <- rep("", 50)
+i <- 1
+for (f in Sys.glob('./ReutersC50/C50train/*')){
+  authors[i] <- tail(strsplit(f, "/")[[1]], 1)
+  i <- i+1
+}
+#since each author has 50 documents, we need to replicate each author 50 times for the dataframe
+authors <- rep(authors, each=50)
+#instantiate dataframe with first column being authors
+train_df <- data.frame(author=authors, txt=rep("", 2500), stringsAsFactors = FALSE)
+#add in text for each document after concatening all lines with a space
+file_list_train = Sys.glob('./ReutersC50/C50train/*/*.txt')
+trainfiles = lapply(file_list_train, readerPlain)
+for(i in 1:length(trainfiles)){
+  contentvec <- trainfiles[[i]]$content
+  train_df[i,2] <- paste(contentvec, collapse = " ")
+}
+```
+
+Now we aim to find the term frequency used by each author. This will become the metric used to predict later on.
+
+```{r}
+library(dplyr)
+library(tidytext)
+
+train_text <- train_df %>%
+  unnest_tokens(word, txt) %>%
+  count(author, word, sort = TRUE)
+
+#grab all unique words so we can make them columns in a new dataframe
+unique_words = unique(train_text["word"])
+
+# new dataframe to hold word counts
+word_freq <- data.frame(authorName=unique(authors), stringsAsFactors = FALSE)
+
+# populate columns with words
+for(word in unique_words) {
+  word_freq[,word] <- 0
+}
+
+# add back in author names
+for (i in 1:50)(
+  word_freq[i,"author"] <- unique(authors)[i]
+)
+
+# now we populate the cell values with counts from train_text
+
+for (i in 1:172933){
+  
+  try(word_freq[match(train_text["author"][i,],word_freq$authorName),train_text["word"][i,]] <- train_text["n"][i,], silent = TRUE)
+}
+```
+We now have a dataframe with authors and the number of times certain words appear in their works. We now apply a decision tree model to predict authors from this data.
+
+```{r}
+library(tree)
+train <- word_freq[,1:10000]
+csTree <- tree(authorName~., data = data.frame(word_freq[,1:10000]))
+```
+Now we can create our test set and see how our model performs.
+
+```{r}
+library(tm)
+readerPlain = function(fname){
+  readPlain(elem=list(content=readLines(fname)), id=fname, language='en') 
+}
+#get all authors for the documents
+authors <- rep("", 50)
+i <- 1
+for (f in Sys.glob('./ReutersC50/C50test/*')){
+  authors[i] <- tail(strsplit(f, "/")[[1]], 1)
+  i <- i+1
+}
+#since each author has 50 documents, we need to replicate each author 50 times for the dataframe
+authors <- rep(authors, each=50)
+#instantiate dataframe with first column being authors
+test_df <- data.frame(author=authors, txt=rep("", 2500), stringsAsFactors = FALSE)
+#add in text for each document after concatening all lines with a space
+file_list_train = Sys.glob('./ReutersC50/C50test/*/*.txt')
+testfiles = lapply(file_list_train, readerPlain)
+for(i in 1:length(trainfiles)){
+  contentvec <- trainfiles[[i]]$content
+  test_df[i,2] <- paste(contentvec, collapse = " ")
+}
+```
+
+Now we create another frequency table like before.
+
+```{r}
+library(dplyr)
+library(tidytext)
+
+test_text <- test_df %>%
+  unnest_tokens(word, txt) %>%
+  count(author, word, sort = TRUE)
+
+#grab all unique words so we can make them columns in a new dataframe
+unique_words = unique(test_text["word"])
+
+# new dataframe to hold word counts
+word_freq2 <- data.frame(authorName=unique(authors), stringsAsFactors = FALSE)
+
+# populate columns with words
+for(word in unique_words) {
+  word_freq2[,word] <- 0
+}
+
+# add back in author names
+for (i in 1:50)(
+  word_freq2[i,"author"] <- unique(authors)[i]
+)
+
+# now we populate the cell values with counts from test_txt
+
+for (i in 1:177674){
+  
+  try(word_freq2[match(test_text["author"][i,],word_freq2$authorName),test_text["word"][i,]] <- test_text["n"][i,], silent = TRUE)
+}
+```
+
+With this data, we can test it on the model we made earlier. 
+
+```{r}
+treePred <- try(predict(csTree, newdata = data.frame(word_freq2[,1:100])), silent = TRUE)
+```
+
+
+# Exercise 6
+
+We first read in the data. This time, we have it on our local system.
+
+```{r}
+library(tidyverse)
+groceries <- readLines("groceries.txt")      # read all lines
+groceries <- strsplit(groceries, ",", fixed=TRUE)    # split each line by commas, returns a list
+
+library(arules)
+library(arulesViz)
+groceries <- as(groceries, Class =  "transactions")            # turn into to transaction object
+grocery_rules <- apriori(groceries, parameter=list(support=.005, confidence=.1, maxlen=5))   # etc
+#inspect(grocery_rules)
+
+# plot all the rules in (support, confidence) space
+plot(grocery_rules)
+
+inspect(subset(grocery_rules, subset=lift > 3.8))
+```
+From the plot, we let our lift be greater than 3.8 to get a few rules that seem to be strong. Looking at the data above, we see that herbs usually lead to a purchase of other root vegetables. We also see that ham and white bread are typically purchased together. Another significant association rule is that the purchase of butter and other vegetables usually lead to whipped/sour cream as well.
+
+
+```{r}
+inspect(subset(grocery_rules, subset=confidence > 0.63))
+```
+Here, we check the rules where the confidence is above 0.63. Here we see many rules that lead to the purchase of whole milk. This usually stems from the purchase of some kind of dairy product like butter, cream, or yogurt. Another interesting rule is that the citrus, root vegetables, and, whole milk can lead to the purchase of other vegetables.
+
+```{r}
+inspect(subset(grocery_rules, subset=lift > 3 & confidence > 0.5))
+```
+In this last subset, we chose a combination of lift greater than 3 and confidence greater than 0.5 to see a few of the higher end rules. Most of these rules seem to tie root vegetables to the purchase of other vegetables, but another interesting rule is that curd and tropical fruit lead to the purchase of yogurt as well.
